@@ -68,9 +68,10 @@
                 </div>
                 
                 <div class="flex-shrink-0 flex items-center gap-2">
-                    <button id="refreshBtn" onclick="loadData()" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        <span>Обновить</span>
+                    <button id="refreshBtn" onclick="loadData()" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white w-[140px] h-[44px] rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                        <svg id="refreshIcon" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <div id="refreshLoader" class="loader hidden shrink-0" style="border-left-color: transparent; border-top-color: white; width: 16px; height: 16px; border-width: 2px;"></div>
+                        <span id="refreshText">Обновить</span>
                     </button>
                 </div>
             </div>
@@ -134,10 +135,10 @@
                     <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
                         <span class="w-2 h-6 bg-purple-500 rounded-sm"></span> Сравнение (Лицом к лицу)
                     </h2>
-                    <div class="flex gap-2">
-                        <select id="driver1Selector" class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-xs text-white max-w-[120px] outline-none"></select>
+                    <div class="flex gap-2 items-center">
+                        <select id="driver1Selector" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white max-w-[180px] sm:max-w-[220px] outline-none truncate"></select>
                         <span class="text-slate-400 text-sm py-1">vs</span>
-                        <select id="driver2Selector" class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-xs text-white max-w-[120px] outline-none"></select>
+                        <select id="driver2Selector" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white max-w-[180px] sm:max-w-[220px] outline-none truncate"></select>
                     </div>
                 </div>
                 <div class="flex-1 relative w-full h-full"><canvas id="radarChart"></canvas></div>
@@ -188,7 +189,7 @@
             },
             { 
                 id: 'dotq', 
-                name: 'Пилот квалификации', 
+                name: 'Пилот квалы', 
                 url: 'https://docs.google.com/spreadsheets/d/1Gz8rnrYxf7LjBI3sjih7VlulC0YDvc8AwvgiVbKtKZ8/gviz/tq?tqx=out:json&sheet=DotQ&range=A3:Z&headers=1', 
                 colorHex: '#f59e0b', 
                 icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' 
@@ -311,7 +312,7 @@
 
             const overallTitle = document.getElementById('overallTitle');
             if (['rankq', 'rankr'].includes(currentDataset.id)) {
-                overallTitle.innerText = 'Общие оценки';
+                overallTitle.innerText = 'Общие оценки (Столбчатая диаграмма)';
             } else {
                 overallTitle.innerText = 'Общий рейтинг';
             }
@@ -364,47 +365,45 @@
             visualization: {
                 Query: {
                     setResponse: function(jsonObj) {
-                        const btn = document.getElementById('refreshBtn');
-                        const btnText = btn.querySelector('span');
-                        const dashboard = document.getElementById('dashboardContent');
-
                         if (jsonObj.status === 'error') {
                             showError("Ошибка Google API: " + (jsonObj.errors[0]?.message || "Неизвестная ошибка"));
-                            resetFetchState(btn, btnText);
+                            resetFetchState();
                             return;
                         }
 
                         if (!jsonObj.table || !jsonObj.table.rows) {
                             showError("Данные таблицы недоступны.");
-                            resetFetchState(btn, btnText);
+                            resetFetchState();
                             return;
                         }
 
                         try {
                             parseGoogleJSON(jsonObj.table);
                             initDashboard();
-                            dashboard.classList.remove('opacity-0');
+                            document.getElementById('dashboardContent').classList.remove('opacity-0');
                         } catch (e) {
                             showError("Ошибка обработки данных: " + e.message);
                             console.error(e);
                         } finally {
-                            resetFetchState(btn, btnText);
+                            resetFetchState();
                         }
                     }
                 }
             }
         };
 
-        function resetFetchState(btn, btnText) {
+        function resetFetchState() {
             isFetching = false;
+            const btn = document.getElementById('refreshBtn');
             if (btn) btn.disabled = false;
-            if (btnText) btnText.innerHTML = 'Обновить';
             
-            // Восстанавливаем иконку, если она скрывалась
-            if (btn) {
-                const icon = btn.querySelector('svg.w-4.h-4');
-                if (icon) icon.classList.remove('hidden');
-            }
+            const icon = document.getElementById('refreshIcon');
+            const loader = document.getElementById('refreshLoader');
+            const text = document.getElementById('refreshText');
+            
+            if (icon) icon.classList.remove('hidden');
+            if (loader) loader.classList.add('hidden');
+            if (text) text.innerText = 'Обновить';
         }
 
         function showError(msg) {
@@ -416,22 +415,22 @@
             if(isFetching) return;
             isFetching = true;
             const btn = document.getElementById('refreshBtn');
-            const btnText = btn.querySelector('span');
             document.getElementById('errorMessage').classList.add('hidden');
-            btn.disabled = true;
+            if (btn) btn.disabled = true;
             
-            // Прячем SVG иконку при загрузке
-            const icon = btn.querySelector('svg.w-4.h-4');
+            const icon = document.getElementById('refreshIcon');
+            const loader = document.getElementById('refreshLoader');
+            const text = document.getElementById('refreshText');
+            
             if (icon) icon.classList.add('hidden');
-            
-            // Используем span и flexbox для центрирования на одной строке
-            btnText.innerHTML = '<span class="flex items-center gap-2"><span class="loader" style="border-left-color: transparent; border-top-color: white;"></span> Загрузка...</span>';
+            if (loader) loader.classList.remove('hidden');
+            if (text) text.innerText = 'Загрузка...';
             
             const script = document.createElement('script');
             script.src = `${currentDataset.url}&_t=${new Date().getTime()}`;
             script.onerror = () => {
                 showError("Ошибка подключения. Проверьте интернет или доступ к таблице.");
-                resetFetchState(btn, btnText);
+                resetFetchState();
             };
             script.onload = () => script.remove();
             document.body.appendChild(script);
