@@ -62,7 +62,7 @@
                 <div>
                     <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3" id="pageTitle">
                         <svg class="w-8 h-8 transition-colors duration-500" id="pageIcon" style="color: #ef4444;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        <span>Аналитика: Загрузка...</span>
+                        <span>OG Power Rankings: Загрузка...</span>
                     </h1>
                     <p class="text-slate-400 text-sm mt-2 text-center md:text-left">Визуализация данных напрямую из Google Таблиц</p>
                 </div>
@@ -90,7 +90,7 @@
             <!-- 1. Общий рейтинг -->
             <section id="overallSection" class="glass-card p-6 flex flex-col h-[550px] transition-all duration-500">
                 <h2 class="text-xl font-bold mb-4 text-slate-100 flex items-center gap-2">
-                    <span class="w-2 h-6 rounded-sm transition-colors duration-500" id="accentBar1" style="background-color: #ef4444;"></span> Общий рейтинг
+                    <span class="w-2 h-6 rounded-sm transition-colors duration-500" id="accentBar1" style="background-color: #ef4444;"></span> <span id="overallTitle">Общий рейтинг</span>
                 </h2>
                 <div class="flex-1 relative w-full h-full"><canvas id="overallChart"></canvas></div>
             </section>
@@ -108,7 +108,7 @@
                 </div>
             </section>
 
-            <!-- 3. Прогрессия (Скрывается для Dot) -->
+            <!-- 3. Прогрессия (Скрывается для Dot и RankQ) -->
             <section id="trendSection" class="glass-card p-6 flex flex-col h-[450px] transition-all duration-500">
                 <div class="flex justify-between items-center mb-4 relative z-20">
                     <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -125,7 +125,7 @@
                 <div class="flex-1 relative w-full h-full"><canvas id="trendChart"></canvas></div>
             </section>
 
-            <!-- 4. Радар (Скрывается для Dot) -->
+            <!-- 4. Радар (Скрывается для Dot и RankQ) -->
             <section id="radarSection" class="glass-card p-6 flex flex-col h-[450px] transition-all duration-500">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -159,7 +159,7 @@
 
     <script>
         // --------------------------------------------------------------------------------
-        // КОНФИГУРАЦИЯ (Везде headers=1)
+        // КОНФИГУРАЦИЯ
         // --------------------------------------------------------------------------------
         const DATASETS = [
             { 
@@ -189,6 +189,13 @@
                 url: 'https://docs.google.com/spreadsheets/d/1Gz8rnrYxf7LjBI3sjih7VlulC0YDvc8AwvgiVbKtKZ8/gviz/tq?tqx=out:json&sheet=DotQ&range=A3:Z&headers=1', 
                 colorHex: '#f59e0b', 
                 icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' 
+            },
+            { 
+                id: 'rankq', 
+                name: 'Общие оценки', 
+                url: 'https://docs.google.com/spreadsheets/d/1Gz8rnrYxf7LjBI3sjih7VlulC0YDvc8AwvgiVbKtKZ8/gviz/tq?tqx=out:json&headers=1&range=A1:B&sheet=RankQ', 
+                colorHex: '#a855f7', // Фиолетовый
+                icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' 
             }
         ];
 
@@ -207,13 +214,14 @@
 
         const palette = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6', '#f43f5e', '#84cc16', '#a855f7', '#0ea5e9', '#eab308', '#22c55e', '#f97316', '#6366f1', '#10b981', '#fbbf24', '#f87171', '#38bdf8'];
 
-        // Логика цветов: СЧИТАЕМ ОТ ЛИДЕРА (MAX)
+        // Логика цветов: Считаем проценты от ЛИДЕРА этапа
         function getColor(score, maxValue = 10) {
             if (score === null || score === undefined) return 'rgba(71, 85, 105, 0.5)';
             const num = Number(score);
             if (isNaN(num)) return 'rgba(71, 85, 105, 0.5)';
 
-            if (['dotr', 'dotq'].includes(currentDataset.id)) {
+            // Применяем относительную шкалу для Dot-ов и RankQ
+            if (['dotr', 'dotq', 'rankq'].includes(currentDataset.id)) {
                 if (maxValue === 0 || num === 0) return 'rgba(239, 68, 68, 0.8)'; // 0% - красная
                 const percentageOfLeader = (num / maxValue) * 100;
                 if (percentageOfLeader > 80) return 'rgba(16, 185, 129, 0.8)'; // зеленая
@@ -232,7 +240,7 @@
             const num = Number(score);
             if (isNaN(num)) return 'text-slate-500';
 
-            if (['dotr', 'dotq'].includes(currentDataset.id)) {
+            if (['dotr', 'dotq', 'rankq'].includes(currentDataset.id)) {
                 if (maxValue === 0 || num === 0) return 'text-red-400';
                 const percentageOfLeader = (num / maxValue) * 100;
                 if (percentageOfLeader > 80) return 'text-emerald-400';
@@ -265,12 +273,20 @@
         }
 
         function updateUITheme() {
-            document.getElementById('pageTitle').querySelector('span').innerText = `Аналитика: ${currentDataset.name}`;
+            document.getElementById('pageTitle').querySelector('span').innerText = `OG Power Rankings: ${currentDataset.name}`;
             document.getElementById('pageIcon').style.color = currentDataset.colorHex;
             document.getElementById('pageIcon').innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${currentDataset.icon}"></path>`;
             document.getElementById('mainHeader').style.borderColor = currentDataset.colorHex;
             document.getElementById('accentBar1').style.backgroundColor = currentDataset.colorHex;
             document.getElementById('accentBar2').style.backgroundColor = currentDataset.colorHex;
+
+            // Смена названия секции для RankQ
+            const overallTitle = document.getElementById('overallTitle');
+            if (currentDataset.id === 'rankq') {
+                overallTitle.innerText = 'Общие оценки (Столбчатая диаграмма)';
+            } else {
+                overallTitle.innerText = 'Общий рейтинг';
+            }
         }
 
         function switchDataset(id) {
@@ -360,16 +376,18 @@
             columns = [];
             let colOffsets = [];
             
-            const parseVal = (v) => {
-                if (v === null || v === undefined || v === "") return null;
-                if (typeof v === 'number') return v;
-                let str = v.toString().replace(/%/g, '').replace(/,/g, '.').replace(/\s/g, '').trim();
+            const parseVal = (cell) => {
+                if (!cell) return null;
+                if (typeof cell.v === 'number') return cell.v;
+                let val = cell.v !== null ? cell.v : cell.f;
+                if (val === null || val === undefined || val === "") return null;
+                let str = val.toString().replace(/%/g, '').replace(/,/g, '.').replace(/\s/g, '').trim();
+                if (str === "") return null;
                 let num = parseFloat(str);
                 return isNaN(num) ? null : num;
             };
 
-            // Извлекаем заголовки из table.cols (Headers=1 всегда теперь)
-            overallColName = (table.cols[1] && table.cols[1].label) ? table.cols[1].label.split('\n')[0].trim() : "Итог";
+            overallColName = (table.cols[1] && table.cols[1].label) ? table.cols[1].label.split('\n')[0].trim() : "Оценка";
             
             for (let i = 2; i < table.cols.length; i++) {
                 let label = table.cols[i] ? table.cols[i].label.split('\n')[0].trim() : "";
@@ -389,13 +407,13 @@
             table.rows.forEach(r => {
                 if (!r.c || !r.c[0]) return;
                 let name = r.c[0].v ? r.c[0].v.toString().trim() : (r.c[0].f ? r.c[0].f.toString().trim() : "");
+                // Для RankQ пустые имена означают пустые строки
                 if (!name || ["From", "To", "Среднее", "Rating", "Driver", "Пилот"].includes(name)) return;
 
-                let overall = parseVal(r.c[1] ? r.c[1].v : null);
+                let overall = parseVal(r.c[1]);
                 let events = {};
                 columns.forEach((col, idx) => {
-                    let cell = r.c[colOffsets[idx]];
-                    events[col] = parseVal(cell ? cell.v : null);
+                    events[col] = parseVal(r.c[colOffsets[idx]]);
                 });
 
                 data.push({ driver: name, overall, events });
@@ -403,7 +421,7 @@
 
             globalData = data.sort((a, b) => (b.overall || 0) - (a.overall || 0));
 
-            // Считаем максимумы для относительной раскраски
+            // Расчет максимумов
             globalMaxOverall = Math.max(...globalData.map(d => d.overall || 0));
             globalMaxByStage = {};
             columns.forEach(col => {
@@ -416,17 +434,45 @@
         // --------------------------------------------------------------------------------
         function initDashboard() {
             const isDot = ['dotr', 'dotq'].includes(currentDataset.id);
-            document.getElementById('trendSection').classList.toggle('hidden', isDot);
-            document.getElementById('radarSection').classList.toggle('hidden', isDot);
-            document.getElementById('overallSection').classList.toggle('lg:col-span-2', isDot);
-            document.getElementById('raceSection').classList.toggle('lg:col-span-2', isDot);
+            const isRank = ['rankq'].includes(currentDataset.id);
 
-            if (!isDot) {
+            const trendSection = document.getElementById('trendSection');
+            const radarSection = document.getElementById('radarSection');
+            const overallSection = document.getElementById('overallSection');
+            const raceSection = document.getElementById('raceSection');
+            
+            // Динамически скрываем/показываем блоки в зависимости от датасета
+            if (isRank) {
+                trendSection.classList.add('hidden');
+                radarSection.classList.add('hidden');
+                raceSection.classList.add('hidden');
+                overallSection.classList.add('lg:col-span-2');
+                overallSection.classList.remove('h-[550px]');
+                overallSection.classList.add('h-[650px]');
+            } else if (isDot) {
+                trendSection.classList.add('hidden');
+                radarSection.classList.add('hidden');
+                raceSection.classList.remove('hidden');
+                overallSection.classList.add('lg:col-span-2');
+                raceSection.classList.add('lg:col-span-2');
+                overallSection.classList.add('h-[550px]');
+                overallSection.classList.remove('h-[650px]');
+            } else {
+                trendSection.classList.remove('hidden');
+                radarSection.classList.remove('hidden');
+                raceSection.classList.remove('hidden');
+                overallSection.classList.remove('lg:col-span-2');
+                raceSection.classList.remove('lg:col-span-2');
+                overallSection.classList.add('h-[550px]');
+                overallSection.classList.remove('h-[650px]');
                 setupTrendTab();
                 setupRadarTab();
             }
+
             drawOverall();
-            setupRaceTab();
+            if (!isRank) {
+                setupRaceTab();
+            }
             drawTable();
         }
 
@@ -571,7 +617,9 @@
         }
 
         function drawTable() {
-            let hHtml = `<th class="px-4 py-3 cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('driver')">Пилот ${getSortIcon('driver')}</th><th class="px-4 py-3 text-center bg-slate-800/80 text-white cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('overall')">${overallColName} ${getSortIcon('overall')}</th>`;
+            let firstColName = currentDataset.id === 'rankq' ? 'Этап' : 'Пилот';
+
+            let hHtml = `<th class="px-4 py-3 cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('driver')">${firstColName} ${getSortIcon('driver')}</th><th class="px-4 py-3 text-center bg-slate-800/80 text-white cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('overall')">${overallColName} ${getSortIcon('overall')}</th>`;
             columns.forEach(c => hHtml += `<th class="px-4 py-3 text-center cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('${c}')">${c} ${getSortIcon(c)}</th>`);
             document.getElementById('tableHeader').innerHTML = hHtml + `<th class="px-4 py-3 border-l border-slate-700 border-opacity-50"></th>`;
 
