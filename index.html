@@ -192,9 +192,16 @@
             },
             { 
                 id: 'rankq', 
-                name: 'Общие оценки', 
+                name: 'Общие оценки (RankQ)', 
                 url: 'https://docs.google.com/spreadsheets/d/1Gz8rnrYxf7LjBI3sjih7VlulC0YDvc8AwvgiVbKtKZ8/gviz/tq?tqx=out:json&headers=1&range=A1:B&sheet=RankQ', 
                 colorHex: '#a855f7', // Фиолетовый
+                icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' 
+            },
+            { 
+                id: 'rankr', 
+                name: 'Общие оценки (RankR)', 
+                url: 'https://docs.google.com/spreadsheets/d/1Gz8rnrYxf7LjBI3sjih7VlulC0YDvc8AwvgiVbKtKZ8/gviz/tq?tqx=out:json&headers=1&range=A1:B&sheet=RankR', 
+                colorHex: '#14b8a6', // Бирюзовый
                 icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' 
             }
         ];
@@ -220,8 +227,8 @@
             const num = Number(score);
             if (isNaN(num)) return 'rgba(71, 85, 105, 0.5)';
 
-            // Применяем относительную шкалу для Dot-ов и RankQ
-            if (['dotr', 'dotq', 'rankq'].includes(currentDataset.id)) {
+            // Применяем относительную шкалу для Dot-ов, RankQ и RankR
+            if (['dotr', 'dotq', 'rankq', 'rankr'].includes(currentDataset.id)) {
                 if (maxValue === 0 || num === 0) return 'rgba(239, 68, 68, 0.8)'; // 0% - красная
                 const percentageOfLeader = (num / maxValue) * 100;
                 if (percentageOfLeader > 80) return 'rgba(16, 185, 129, 0.8)'; // зеленая
@@ -240,7 +247,7 @@
             const num = Number(score);
             if (isNaN(num)) return 'text-slate-500';
 
-            if (['dotr', 'dotq', 'rankq'].includes(currentDataset.id)) {
+            if (['dotr', 'dotq', 'rankq', 'rankr'].includes(currentDataset.id)) {
                 if (maxValue === 0 || num === 0) return 'text-red-400';
                 const percentageOfLeader = (num / maxValue) * 100;
                 if (percentageOfLeader > 80) return 'text-emerald-400';
@@ -280,9 +287,9 @@
             document.getElementById('accentBar1').style.backgroundColor = currentDataset.colorHex;
             document.getElementById('accentBar2').style.backgroundColor = currentDataset.colorHex;
 
-            // Смена названия секции для RankQ
+            // Смена названия секции для RankQ и RankR
             const overallTitle = document.getElementById('overallTitle');
-            if (currentDataset.id === 'rankq') {
+            if (['rankq', 'rankr'].includes(currentDataset.id)) {
                 overallTitle.innerText = 'Общие оценки (Столбчатая диаграмма)';
             } else {
                 overallTitle.innerText = 'Общий рейтинг';
@@ -434,7 +441,7 @@
         // --------------------------------------------------------------------------------
         function initDashboard() {
             const isDot = ['dotr', 'dotq'].includes(currentDataset.id);
-            const isRank = ['rankq'].includes(currentDataset.id);
+            const isRank = ['rankq', 'rankr'].includes(currentDataset.id);
 
             const trendSection = document.getElementById('trendSection');
             const radarSection = document.getElementById('radarSection');
@@ -617,7 +624,7 @@
         }
 
         function drawTable() {
-            let firstColName = currentDataset.id === 'rankq' ? 'Этап' : 'Пилот';
+            let firstColName = ['rankq', 'rankr'].includes(currentDataset.id) ? 'Этап' : 'Пилот';
 
             let hHtml = `<th class="px-4 py-3 cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('driver')">${firstColName} ${getSortIcon('driver')}</th><th class="px-4 py-3 text-center bg-slate-800/80 text-white cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('overall')">${overallColName} ${getSortIcon('overall')}</th>`;
             columns.forEach(c => hHtml += `<th class="px-4 py-3 text-center cursor-pointer hover:bg-slate-700 select-none group" onclick="sortTable('${c}')">${c} ${getSortIcon(c)}</th>`);
